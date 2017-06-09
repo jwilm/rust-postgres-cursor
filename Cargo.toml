@@ -11,7 +11,6 @@ rand = "0.3"
 git = "https://github.com/sfackler/rust-postgres"
 branch = "master"
 # version = "0.14"
-features = ["with-uuid", "with-chrono"]
 
 [dev-dependencies]
 lazy_static = "*"
