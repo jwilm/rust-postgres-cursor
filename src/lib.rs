@@ -195,6 +195,51 @@ impl<'a, D: fmt::Display + ?Sized + 'a> Builder<'a, D> {
     /// cursors originate when viewing `pg_stat_activity`.
     ///
     /// Default is `default`.
+    ///
+    /// # Examples
+    ///
+    /// Any type that implements `fmt::Display` may be provided as a tag. For example, a simple
+    /// string literal is one option.
+    ///
+    /// ```no_run
+    /// # extern crate postgres;
+    /// # extern crate postgres_cursor;
+    /// # use postgres::{Connection, TlsMode};
+    /// # use postgres_cursor::Cursor;
+    /// # fn main() {
+    /// # let conn = Connection::connect("postgres://jwilm@127.0.0.1/foo", TlsMode::None)
+    /// #     .expect("connect");
+    /// let mut cursor = Cursor::build(&conn)
+    ///     .tag("custom-cursor-tag")
+    ///     .finalize();
+    /// # }
+    /// ```
+    ///
+    /// Or maybe you want to build a tag at run-time without incurring an extra allocation:
+    ///
+    /// ```no_run
+    /// # extern crate postgres;
+    /// # extern crate postgres_cursor;
+    /// # use postgres::{Connection, TlsMode};
+    /// # use postgres_cursor::Cursor;
+    /// # fn main() {
+    /// # let conn = Connection::connect("postgres://jwilm@127.0.0.1/foo", TlsMode::None)
+    /// #     .expect("connect");
+    /// use std::fmt;
+    ///
+    /// struct Pid(i32);
+    /// impl fmt::Display for Pid {
+    ///     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    ///         write!(f, "pid-{}", self.0)
+    ///     }
+    /// }
+    ///
+    /// let tag = Pid(8123);
+    /// let mut cursor = Cursor::build(&conn)
+    ///     .tag(&tag)
+    ///     .finalize();
+    /// # }
+    /// ```
     pub fn tag<D2: fmt::Display + ?Sized>(self, tag: &'a D2) -> Builder<'a, D2> {
         Builder {
             batch_size: self.batch_size,

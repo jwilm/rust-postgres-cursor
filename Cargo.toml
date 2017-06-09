@@ -10,7 +10,7 @@ rand = "0.3"
 [dependencies.postgres]
 git = "https://github.com/sfackler/rust-postgres"
 branch = "master"
-# version = "0.14"
+version = "0.14"
 
 [dev-dependencies]
 lazy_static = "*"
