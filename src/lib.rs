@@ -41,13 +41,28 @@
 //! # }
 //! ```
 extern crate postgres;
-
-use postgres::Connection;
-use postgres::rows::{Rows};
+extern crate rand;
 
 #[macro_use]
 #[cfg(test)]
 extern crate lazy_static;
+
+use std::{fmt, mem};
+
+use postgres::Connection;
+use postgres::rows::{Rows};
+use rand::{thread_rng, Rng};
+
+struct Hex<'a>(&'a [u8]);
+impl<'a> fmt::Display for Hex<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for byte in self.0 {
+            write!(f, "{:02x}", byte)?;
+        }
+
+        Ok(())
+    }
+}
 
 /// Represents a PostgreSQL cursor.
 ///
@@ -63,11 +78,13 @@ pub struct Cursor<'a> {
 }
 
 impl<'a> Cursor<'a> {
-    fn new<'b>(builder: Builder<'b>) -> Cursor<'b> {
-        // TODO real cursor names; something like cursor_{pid}_{counter}
-        let cursor_name = "foo_cursor".to_string();
-        let query = format!("DECLARE {} CURSOR FOR {}", cursor_name, builder.query);
-        let fetch_query = format!("FETCH {} FROM {}", builder.batch_size, cursor_name);
+    fn new<'b, D: fmt::Display + ?Sized>(builder: Builder<'b, D>) -> Cursor<'b> {
+        let mut bytes: [u8; 8] = unsafe { mem::uninitialized() };
+        thread_rng().fill_bytes(&mut bytes[..]);
+
+        let cursor_name = format!("cursor:{}:{}", builder.tag, Hex(&bytes));
+        let query = format!("DECLARE \"{}\" CURSOR FOR {}", cursor_name, builder.query);
+        let fetch_query = format!("FETCH {} FROM \"{}\"", builder.batch_size, cursor_name);
 
         Cursor {
             closed: true,
@@ -79,8 +96,8 @@ impl<'a> Cursor<'a> {
         }
     }
 
-    pub fn build<'b>(conn: &'b Connection) -> Builder<'b> {
-        Builder::new(conn)
+    pub fn build<'b>(conn: &'b Connection) -> Builder<'b, str> {
+        Builder::<str>::new(conn)
     }
 }
 
@@ -128,7 +145,7 @@ impl<'a> Cursor<'a> {
 
     fn close(&mut self) -> postgres::Result<()> {
         if !self.closed {
-            let close_query = format!("CLOSE {}", self.cursor_name);
+            let close_query = format!("CLOSE \"{}\"", self.cursor_name);
             self.conn.execute(&close_query[..], &[])?;
             self.conn.execute("COMMIT", &[])?;
             self.closed = true;
@@ -147,18 +164,20 @@ impl<'a> Drop for Cursor<'a> {
 /// Builds a Cursor
 ///
 /// This type is constructed by calling `Cursor::build`.
-pub struct Builder<'a> {
+pub struct Builder<'a, D: ?Sized + 'a> {
     batch_size: u32,
     query: &'a str,
     conn: &'a Connection,
+    tag: &'a D,
 }
 
-impl<'a> Builder<'a> {
-    fn new<'b>(conn: &'b Connection) -> Builder<'b> {
+impl<'a, D: fmt::Display + ?Sized + 'a> Builder<'a, D> {
+    fn new<'b>(conn: &'b Connection) -> Builder<'b, str> {
         Builder {
             conn,
             batch_size: 5_000,
             query: "SELECT 1 as one",
+            tag: "default",
         }
     }
 
@@ -168,6 +187,21 @@ impl<'a> Builder<'a> {
     pub fn batch_size(mut self, batch_size: u32) -> Self {
         self.batch_size = batch_size;
         self
+    }
+
+    /// Set the tag for cursor name.
+    ///
+    /// Adding a tag to the cursor name can be helpful for identifying where
+    /// cursors originate when viewing `pg_stat_activity`.
+    ///
+    /// Default is `default`.
+    pub fn tag<D2: fmt::Display + ?Sized>(self, tag: &'a D2) -> Builder<'a, D2> {
+        Builder {
+            batch_size: self.batch_size,
+            query: self.query,
+            conn: self.conn,
+            tag: tag
+        }
     }
 
     /// Set the query to create a cursor for.
@@ -263,6 +297,55 @@ mod tests {
             }
 
             assert_eq!(got, 197);
+        });
+    }
+
+    #[test]
+    fn build_cursor_with_tag() {
+        with_items(1, |conn| {
+            {
+                let cursor = Cursor::build(conn)
+                    .tag("foobar")
+                    .finalize();
+
+                assert!(cursor.cursor_name.starts_with("cursor:foobar"));
+            }
+
+            struct Foo;
+            use std::fmt;
+            impl fmt::Display for Foo {
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                    write!(f, "foo-{}", 1)
+                }
+            }
+
+            {
+                let foo = Foo;
+                let cursor = Cursor::build(conn)
+                    .tag(&foo)
+                    .finalize();
+
+                println!("{}", cursor.cursor_name);
+                assert!(cursor.cursor_name.starts_with("cursor:foo-1"));
+            }
+        });
+    }
+
+    #[test]
+    fn cursor_with_long_tag() {
+        with_items(100, |conn| {
+            let mut cursor = Cursor::build(conn)
+                .tag("really-long-tag-damn-that-was-only-three-words-foo-bar-baz")
+                .query("SELECT id FROM products")
+                .finalize();
+
+            let mut got = 0;
+            for batch in cursor.iter().unwrap() {
+                let batch = batch.unwrap();
+                got += batch.len();
+            }
+
+            assert_eq!(got, 100);
         });
     }
 }
