@@ -41,3 +41,11 @@ fn main() {
     }
 }
 ```
+
+## Features
+
+The library is mostly complete since its only intent is providing a cursor
+abstraction. However, there are some small planned features worth noting:
+
+- [ ] Support query parameters (eg. `"SELECT foo FROM bar WHERE quux = $1"`) in
+      cursor query string.
