@@ -16,4 +16,4 @@ rand = "0.3"
 version = "0.14.2"
 
 [dev-dependencies]
-lazy_static = "*"
+lazy_static = "0.2"
