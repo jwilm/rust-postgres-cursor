@@ -5,6 +5,9 @@ authors = ["Joe Wilm <joe@jwilm.com>"]
 license = "MIT"
 keywords = ["postgres", "cursor", "postgresql", "sql"]
 categories = ["database"]
+repository = "https://github.com/jwilm/rust-postgres-cursor"
+documentation = "https://docs.rs/postgres-cursor"
+description = "Cursor abstraction for PostgreSQL"
 
 [dependencies]
 rand = "0.3"
