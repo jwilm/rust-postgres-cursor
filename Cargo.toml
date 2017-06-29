@@ -3,6 +3,8 @@ name = "postgres-cursor"
 version = "0.1.0"
 authors = ["Joe Wilm <joe@jwilm.com>"]
 license = "MIT"
+keywords = ["postgres", "cursor", "postgresql", "sql"]
+categories = ["database"]
 
 [dependencies]
 rand = "0.3"
