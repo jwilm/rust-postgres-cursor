@@ -22,10 +22,11 @@
 //!     // Query is the statement to build a cursor for
 //!     .query("SELECT id FROM products")
 //!     // Finalize turns this builder into a cursor
-//!     .finalize();
+//!     .finalize()
+//!     .expect("cursor creation succeeded");
 //!
 //! // Iterate over batches of rows
-//! for result in cursor.iter().unwrap() {
+//! for result in cursor.iter() {
 //!     // Each item returned from the iterator is a Result<Rows>.
 //!     // This is because each call to `next()` makes a query
 //!     // to the database.
@@ -50,6 +51,7 @@ extern crate lazy_static;
 use std::{fmt, mem};
 
 use postgres::Connection;
+use postgres::types::ToSql;
 use postgres::rows::{Rows};
 use rand::{thread_rng, Rng};
 
@@ -68,17 +70,18 @@ impl<'a> fmt::Display for Hex<'a> {
 ///
 /// The actual cursor in the database is only created and active _while_
 /// `Iter` is in scope and calls to `next()` return `Some`.
-pub struct Cursor<'a> {
-    conn: &'a Connection,
+pub struct Cursor<'conn> {
+    conn: &'conn Connection,
     closed: bool,
     cursor_name: String,
-    query: String,
     fetch_query: String,
     batch_size: u32
 }
 
-impl<'a> Cursor<'a> {
-    fn new<'b, D: fmt::Display + ?Sized>(builder: Builder<'b, D>) -> Cursor<'b> {
+impl<'conn> Cursor<'conn> {
+    fn new<'c, 'a, D>(builder: Builder<'c, 'a, D>) -> postgres::Result<Cursor<'c>>
+        where D: fmt::Display + ?Sized
+    {
         let mut bytes: [u8; 8] = unsafe { mem::uninitialized() };
         thread_rng().fill_bytes(&mut bytes[..]);
 
@@ -86,17 +89,19 @@ impl<'a> Cursor<'a> {
         let query = format!("DECLARE \"{}\" CURSOR FOR {}", cursor_name, builder.query);
         let fetch_query = format!("FETCH {} FROM \"{}\"", builder.batch_size, cursor_name);
 
-        Cursor {
-            closed: true,
+        builder.conn.execute("BEGIN", &[])?;
+        builder.conn.execute(&query[..], builder.params)?;
+
+        Ok(Cursor {
+            closed: false,
             conn: builder.conn,
             cursor_name,
-            query,
             fetch_query,
             batch_size: builder.batch_size,
-        }
+        })
     }
 
-    pub fn build<'b>(conn: &'b Connection) -> Builder<'b, str> {
+    pub fn build<'b>(conn: &'b Connection) -> Builder<'b, 'static, str> {
         Builder::<str>::new(conn)
     }
 }
@@ -120,12 +125,10 @@ impl<'b, 'a: 'b> Iterator for Iter<'b, 'a> {
 }
 
 impl<'a> Cursor<'a> {
-    pub fn iter<'b>(&'b mut self) -> postgres::Result<Iter<'b, 'a>> {
-        self.declare_cursor()?;
-
-        Ok(Iter {
+    pub fn iter<'b>(&'b mut self) -> Iter<'b, 'a> {
+        Iter {
             cursor: self,
-        })
+        }
     }
 
     fn next_batch(&mut self) -> postgres::Result<Rows<'static>> {
@@ -134,13 +137,6 @@ impl<'a> Cursor<'a> {
             self.close()?;
         }
         Ok(rows)
-    }
-
-    fn declare_cursor(&mut self) -> postgres::Result<()> {
-        self.conn.execute("BEGIN", &[])?;
-        self.conn.execute(&self.query[..], &[])?;
-        self.closed = false;
-        Ok(())
     }
 
     fn close(&mut self) -> postgres::Result<()> {
@@ -164,21 +160,29 @@ impl<'a> Drop for Cursor<'a> {
 /// Builds a Cursor
 ///
 /// This type is constructed by calling `Cursor::build`.
-pub struct Builder<'a, D: ?Sized + 'a> {
+pub struct Builder<'conn, 'builder, D: ?Sized + 'builder> {
     batch_size: u32,
-    query: &'a str,
-    conn: &'a Connection,
-    tag: &'a D,
+    query: &'builder str,
+    conn: &'conn Connection,
+    tag: &'builder D,
+    params: &'builder [&'builder ToSql],
 }
 
-impl<'a, D: fmt::Display + ?Sized + 'a> Builder<'a, D> {
-    fn new<'b>(conn: &'b Connection) -> Builder<'b, str> {
+impl<'conn, 'builder, D: fmt::Display + ?Sized + 'builder> Builder<'conn, 'builder, D> {
+    fn new<'c>(conn: &'c Connection) -> Builder<'c, 'static, str> {
         Builder {
             conn,
             batch_size: 5_000,
             query: "SELECT 1 as one",
             tag: "default",
+            params: &[],
         }
+    }
+
+    /// Set query params for cursor creation
+    pub fn query_params(mut self, params: &'builder [&'builder ToSql]) -> Self {
+        self.params = params;
+        self
     }
 
     /// Set the batch size passed to `FETCH` on each iteration.
@@ -240,25 +244,26 @@ impl<'a, D: fmt::Display + ?Sized + 'a> Builder<'a, D> {
     ///     .finalize();
     /// # }
     /// ```
-    pub fn tag<D2: fmt::Display + ?Sized>(self, tag: &'a D2) -> Builder<'a, D2> {
+    pub fn tag<D2: fmt::Display + ?Sized>(self, tag: &'builder D2) -> Builder<'conn, 'builder, D2> {
         Builder {
             batch_size: self.batch_size,
             query: self.query,
             conn: self.conn,
-            tag: tag
+            tag: tag,
+            params: self.params
         }
     }
 
     /// Set the query to create a cursor for.
     ///
     /// Default is `SELECT 1`.
-    pub fn query(mut self, query: &'a str) -> Self {
+    pub fn query(mut self, query: &'builder str) -> Self {
         self.query = query;
         self
     }
 
     /// Turn the builder into a `Cursor`.
-    pub fn finalize(self) -> Cursor<'a> {
+    pub fn finalize(self) -> postgres::Result<Cursor<'conn>> {
         Cursor::new(self)
     }
 }
@@ -315,10 +320,10 @@ mod tests {
             let mut cursor = Cursor::build(conn)
                 .batch_size(10)
                 .query("SELECT id FROM products")
-                .finalize();
+                .finalize().unwrap();
 
             let mut got = 0;
-            for batch in cursor.iter().unwrap() {
+            for batch in cursor.iter() {
                 let batch = batch.unwrap();
                 got += batch.len();
             }
@@ -333,10 +338,10 @@ mod tests {
             let mut cursor = Cursor::build(conn)
                 .batch_size(10)
                 .query("SELECT id FROM products")
-                .finalize();
+                .finalize().unwrap();
 
             let mut got = 0;
-            for batch in cursor.iter().unwrap() {
+            for batch in cursor.iter() {
                 let batch = batch.unwrap();
                 got += batch.len();
             }
@@ -351,7 +356,7 @@ mod tests {
             {
                 let cursor = Cursor::build(conn)
                     .tag("foobar")
-                    .finalize();
+                    .finalize().unwrap();
 
                 assert!(cursor.cursor_name.starts_with("cursor:foobar"));
             }
@@ -368,7 +373,7 @@ mod tests {
                 let foo = Foo;
                 let cursor = Cursor::build(conn)
                     .tag(&foo)
-                    .finalize();
+                    .finalize().unwrap();
 
                 println!("{}", cursor.cursor_name);
                 assert!(cursor.cursor_name.starts_with("cursor:foo-1"));
@@ -382,15 +387,33 @@ mod tests {
             let mut cursor = Cursor::build(conn)
                 .tag("really-long-tag-damn-that-was-only-three-words-foo-bar-baz")
                 .query("SELECT id FROM products")
-                .finalize();
+                .finalize().unwrap();
 
             let mut got = 0;
-            for batch in cursor.iter().unwrap() {
+            for batch in cursor.iter() {
                 let batch = batch.unwrap();
                 got += batch.len();
             }
 
             assert_eq!(got, 100);
+        });
+    }
+
+    #[test]
+    fn cursor_with_params() {
+        with_items(100, |conn| {
+            let mut cursor = Cursor::build(conn)
+                .query("SELECT id FROM products WHERE id > $1 AND id < $2")
+                .query_params(&[&1, &10])
+                .finalize().unwrap();
+
+            let mut got = 0;
+            for batch in cursor.iter() {
+                let batch = batch.unwrap();
+                got += batch.len();
+            }
+
+            assert_eq!(got, 8);
         });
     }
 }
