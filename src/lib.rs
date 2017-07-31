@@ -26,7 +26,7 @@
 //!     .expect("cursor creation succeeded");
 //!
 //! // Iterate over batches of rows
-//! for result in cursor.iter() {
+//! for result in &mut cursor {
 //!     // Each item returned from the iterator is a Result<Rows>.
 //!     // This is because each call to `next()` makes a query
 //!     // to the database.
@@ -49,6 +49,7 @@ extern crate rand;
 extern crate lazy_static;
 
 use std::{fmt, mem};
+use std::iter::IntoIterator;
 
 use postgres::Connection;
 use postgres::types::ToSql;
@@ -121,6 +122,15 @@ impl<'b, 'a: 'b> Iterator for Iter<'b, 'a> {
         } else {
             Some(self.cursor.next_batch())
         }
+    }
+}
+
+impl<'a, 'conn> IntoIterator for &'a mut Cursor<'conn> {
+    type Item = postgres::Result<Rows<'static>>;
+    type IntoIter = Iter<'a, 'conn>;
+
+    fn into_iter(self) -> Iter<'a, 'conn> {
+        self.iter()
     }
 }
 
@@ -323,7 +333,7 @@ mod tests {
                 .finalize().unwrap();
 
             let mut got = 0;
-            for batch in cursor.iter() {
+            for batch in &mut cursor {
                 let batch = batch.unwrap();
                 got += batch.len();
             }
@@ -341,7 +351,7 @@ mod tests {
                 .finalize().unwrap();
 
             let mut got = 0;
-            for batch in cursor.iter() {
+            for batch in &mut cursor {
                 let batch = batch.unwrap();
                 got += batch.len();
             }
@@ -390,7 +400,7 @@ mod tests {
                 .finalize().unwrap();
 
             let mut got = 0;
-            for batch in cursor.iter() {
+            for batch in &mut cursor {
                 let batch = batch.unwrap();
                 got += batch.len();
             }
@@ -408,7 +418,7 @@ mod tests {
                 .finalize().unwrap();
 
             let mut got = 0;
-            for batch in cursor.iter() {
+            for batch in &mut cursor {
                 let batch = batch.unwrap();
                 got += batch.len();
             }
