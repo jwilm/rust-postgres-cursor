@@ -1,6 +1,6 @@
 [package]
 name = "postgres-cursor"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["Joe Wilm <joe@jwilm.com>"]
 license = "MIT"
 keywords = ["postgres", "cursor", "postgresql", "sql"]
@@ -8,6 +8,7 @@ categories = ["database"]
 repository = "https://github.com/jwilm/rust-postgres-cursor"
 documentation = "https://docs.rs/postgres-cursor"
 description = "Cursor abstraction for PostgreSQL"
+readme = "README.md"
 
 [dependencies]
 rand = "0.3"
