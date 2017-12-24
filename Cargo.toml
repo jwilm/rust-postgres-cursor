@@ -14,7 +14,7 @@ readme = "README.md"
 rand = "0.3"
 
 [dependencies.postgres]
-version = "0.14.2"
+version = "0.15.1"
 
 [dev-dependencies]
 lazy_static = "0.2"

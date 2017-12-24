@@ -114,9 +114,9 @@ pub struct Iter<'b, 'a: 'b> {
 }
 
 impl<'b, 'a: 'b> Iterator for Iter<'b, 'a> {
-    type Item = postgres::Result<Rows<'static>>;
+    type Item = postgres::Result<Rows>;
 
-    fn next(&mut self) -> Option<postgres::Result<Rows<'static>>> {
+    fn next(&mut self) -> Option<postgres::Result<Rows>> {
         if self.cursor.closed {
             None
         } else {
@@ -126,7 +126,7 @@ impl<'b, 'a: 'b> Iterator for Iter<'b, 'a> {
 }
 
 impl<'a, 'conn> IntoIterator for &'a mut Cursor<'conn> {
-    type Item = postgres::Result<Rows<'static>>;
+    type Item = postgres::Result<Rows>;
     type IntoIter = Iter<'a, 'conn>;
 
     fn into_iter(self) -> Iter<'a, 'conn> {
@@ -141,7 +141,7 @@ impl<'a> Cursor<'a> {
         }
     }
 
-    fn next_batch(&mut self) -> postgres::Result<Rows<'static>> {
+    fn next_batch(&mut self) -> postgres::Result<Rows> {
         let rows = self.conn.query(&self.fetch_query[..], &[])?;
         if rows.len() < (self.batch_size as usize) {
             self.close()?;
