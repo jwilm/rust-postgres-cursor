@@ -1,6 +1,6 @@
 [package]
 name = "postgres-cursor"
-version = "0.2.2"
+version = "0.3.0"
 authors = ["Joe Wilm <joe@jwilm.com>"]
 license = "MIT"
 keywords = ["postgres", "cursor", "postgresql", "sql"]
