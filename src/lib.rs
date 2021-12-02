@@ -6,17 +6,17 @@
 //! extern crate postgres;
 //! extern crate postgres_cursor;
 //!
-//! use postgres::{Connection, TlsMode};
+//! use postgres::{Client, Notls};
 //! use postgres_cursor::Cursor;
 //!
 //! # fn main() {
 //!
 //! // First, establish a connection with postgres
-//! let conn = Connection::connect("postgres://jwilm@127.0.0.1/foo", TlsMode::None)
+//! let mut client = Client::connect("postgres://jwilm@127.0.0.1/foo", Notls)
 //!     .expect("connect");
 //!
 //! // Build the cursor
-//! let mut cursor = Cursor::build(&conn)
+//! let mut cursor = Cursor::build(&mut client)
 //!     // Batch size determines rows returned in each FETCH call
 //!     .batch_size(10)
 //!     // Query is the statement to build a cursor for
@@ -218,12 +218,13 @@ impl<'client, 'builder, D: fmt::Display + ?Sized + 'builder> Builder<'client, 'b
     /// ```no_run
     /// # extern crate postgres;
     /// # extern crate postgres_cursor;
-    /// # use postgres::{Connection, TlsMode};
+    /// # use postgres::Client;
+    /// # use postgres::NoTls;
     /// # use postgres_cursor::Cursor;
     /// # fn main() {
-    /// # let conn = Connection::connect("postgres://jwilm@127.0.0.1/foo", TlsMode::None)
+    /// # let mut client = Client::connect("postgres://jwilm@127.0.0.1/foo", Notls)
     /// #     .expect("connect");
-    /// let mut cursor = Cursor::build(&conn)
+    /// let mut cursor = Cursor::build(&mut client)
     ///     .tag("custom-cursor-tag")
     ///     .finalize();
     /// # }
@@ -234,10 +235,11 @@ impl<'client, 'builder, D: fmt::Display + ?Sized + 'builder> Builder<'client, 'b
     /// ```no_run
     /// # extern crate postgres;
     /// # extern crate postgres_cursor;
-    /// # use postgres::{Connection, TlsMode};
+    /// # use postgres::Client;
+    /// # use postgres::NoTls;
     /// # use postgres_cursor::Cursor;
     /// # fn main() {
-    /// # let conn = Connection::connect("postgres://jwilm@127.0.0.1/foo", TlsMode::None)
+    /// # let mut client = Client::connect("postgres://jwilm@127.0.0.1/foo", Notls)
     /// #     .expect("connect");
     /// use std::fmt;
     ///
@@ -249,7 +251,7 @@ impl<'client, 'builder, D: fmt::Display + ?Sized + 'builder> Builder<'client, 'b
     /// }
     ///
     /// let tag = Pid(8123);
-    /// let mut cursor = Cursor::build(&conn)
+    /// let mut cursor = Cursor::build(&mut client)
     ///     .tag(&tag)
     ///     .finalize();
     /// # }
