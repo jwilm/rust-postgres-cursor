@@ -13,7 +13,7 @@ use postgres::{Client, Notls};
 use postgres_cursor::Cursor;
 
 // First, establish a connection with postgres
-let client = Client::connect("postgres://jwilm@127.0.0.1/foo", NOtls)
+let client = Client::connect("postgres://jwilm@127.0.0.1/foo", Notls)
     .expect("connect");
 
 // Build the cursor
