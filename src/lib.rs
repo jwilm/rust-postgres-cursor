@@ -27,7 +27,7 @@
 //!
 //! // Iterate over batches of rows
 //! for result in &mut cursor {
-//!     // Each item returned from the iterator is a Result<Rows>.
+//!     // Each item returned from the iterator is a Result<Vec<Row>, postgres::Error>.
 //!     // This is because each call to `next()` makes a query
 //!     // to the database.
 //!     let rows = result.unwrap();
@@ -110,7 +110,7 @@ impl<'client> Cursor<'client> {
     }
 }
 
-/// Iterator returning `Rows` for every call to `next()`.
+/// Iterator returning `Vec<Row>` for every call to `next()`.
 pub struct Iter<'b, 'a: 'b> {
     cursor: &'b mut Cursor<'a>,
 }
