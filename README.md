@@ -9,15 +9,15 @@ A cursor type for use with PostgreSQL.
 extern crate postgres;
 extern crate postgres_cursor;
 
-use postgres::{Connection, TlsMode};
+use postgres::{Client, Notls};
 use postgres_cursor::Cursor;
 
 // First, establish a connection with postgres
-let conn = Connection::connect("postgres://jwilm@127.0.0.1/foo", TlsMode::None)
+let client = Client::connect("postgres://jwilm@127.0.0.1/foo", NOtls)
     .expect("connect");
 
 // Build the cursor
-let mut cursor = Cursor::build(&conn)
+let mut cursor = Cursor::build(&mut client)
     // Batch size determines rows returned in each FETCH call
     .batch_size(10)
     // Query is the statement to build a cursor for
