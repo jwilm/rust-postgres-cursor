@@ -6,13 +6,13 @@
 //! extern crate postgres;
 //! extern crate postgres_cursor;
 //!
-//! use postgres::{Client, Notls};
+//! use postgres::{Client, NoTls};
 //! use postgres_cursor::Cursor;
 //!
 //! # fn main() {
 //!
 //! // First, establish a connection with postgres
-//! let mut client = Client::connect("postgres://jwilm@127.0.0.1/foo", Notls)
+//! let mut client = Client::connect("postgres://jwilm@127.0.0.1/foo", NoTls)
 //!     .expect("connect");
 //!
 //! // Build the cursor
@@ -222,7 +222,7 @@ impl<'client, 'builder, D: fmt::Display + ?Sized + 'builder> Builder<'client, 'b
     /// # use postgres::NoTls;
     /// # use postgres_cursor::Cursor;
     /// # fn main() {
-    /// # let mut client = Client::connect("postgres://jwilm@127.0.0.1/foo", Notls)
+    /// # let mut client = Client::connect("postgres://jwilm@127.0.0.1/foo", NoTls)
     /// #     .expect("connect");
     /// let mut cursor = Cursor::build(&mut client)
     ///     .tag("custom-cursor-tag")
@@ -239,7 +239,7 @@ impl<'client, 'builder, D: fmt::Display + ?Sized + 'builder> Builder<'client, 'b
     /// # use postgres::NoTls;
     /// # use postgres_cursor::Cursor;
     /// # fn main() {
-    /// # let mut client = Client::connect("postgres://jwilm@127.0.0.1/foo", Notls)
+    /// # let mut client = Client::connect("postgres://jwilm@127.0.0.1/foo", NoTls)
     /// #     .expect("connect");
     /// use std::fmt;
     ///
