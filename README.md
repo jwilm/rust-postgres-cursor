@@ -9,11 +9,11 @@ A cursor type for use with PostgreSQL.
 extern crate postgres;
 extern crate postgres_cursor;
 
-use postgres::{Client, Notls};
+use postgres::{Client, NoTls};
 use postgres_cursor::Cursor;
 
 // First, establish a connection with postgres
-let client = Client::connect("postgres://jwilm@127.0.0.1/foo", Notls)
+let mut client = Client::connect("postgres://jwilm@127.0.0.1/foo", NoTls)
     .expect("connect");
 
 // Build the cursor
