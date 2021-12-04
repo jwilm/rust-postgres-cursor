@@ -28,7 +28,7 @@ let mut cursor = Cursor::build(&mut client)
 
 // Iterate over batches of rows
 for result in &mut cursor {
-    // Each item returned from the iterator is a Result<Rows>.
+    // Each item returned from the iterator is a Result<Vec<Row>, postgres::Error>.
     // This is because each call to `next()` makes a query
     // to the database.
     let rows = result.unwrap();
