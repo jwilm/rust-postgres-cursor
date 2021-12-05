@@ -327,8 +327,8 @@ mod tests {
     #[test]
     fn test_framework_works() {
         let count = 183;
-        with_items(count, |conn| {
-            for row in &conn.query("SELECT COUNT(*) FROM products", &[]).unwrap() {
+        with_items(count, |client| {
+            for row in &client.query("SELECT COUNT(*) FROM products", &[]).unwrap() {
                 let got: i64 = row.get(0);
                 assert_eq!(got, count as i64);
             }
@@ -337,8 +337,8 @@ mod tests {
 
     #[test]
     fn cursor_iter_works_when_batch_size_divisible() {
-        with_items(200, |conn| {
-            let mut cursor = Cursor::build(conn)
+        with_items(200, |client| {
+            let mut cursor = Cursor::build(client)
                 .batch_size(10)
                 .query("SELECT id FROM products")
                 .finalize()
@@ -356,8 +356,8 @@ mod tests {
 
     #[test]
     fn cursor_iter_works_when_batch_size_remainder() {
-        with_items(197, |conn| {
-            let mut cursor = Cursor::build(conn)
+        with_items(197, |client| {
+            let mut cursor = Cursor::build(client)
                 .batch_size(10)
                 .query("SELECT id FROM products")
                 .finalize()
@@ -375,9 +375,9 @@ mod tests {
 
     #[test]
     fn build_cursor_with_tag() {
-        with_items(1, |conn| {
+        with_items(1, |client| {
             {
-                let cursor = Cursor::build(conn).tag("foobar").finalize().unwrap();
+                let cursor = Cursor::build(client).tag("foobar").finalize().unwrap();
 
                 assert!(cursor.cursor_name.starts_with("cursor:foobar"));
             }
@@ -392,7 +392,7 @@ mod tests {
 
             {
                 let foo = Foo;
-                let cursor = Cursor::build(conn).tag(&foo).finalize().unwrap();
+                let cursor = Cursor::build(client).tag(&foo).finalize().unwrap();
 
                 println!("{}", cursor.cursor_name);
                 assert!(cursor.cursor_name.starts_with("cursor:foo-1"));
@@ -402,8 +402,8 @@ mod tests {
 
     #[test]
     fn cursor_with_long_tag() {
-        with_items(100, |conn| {
-            let mut cursor = Cursor::build(conn)
+        with_items(100, |client| {
+            let mut cursor = Cursor::build(client)
                 .tag("really-long-tag-damn-that-was-only-three-words-foo-bar-baz")
                 .query("SELECT id FROM products")
                 .finalize()
@@ -421,8 +421,8 @@ mod tests {
 
     #[test]
     fn cursor_with_params() {
-        with_items(100, |conn| {
-            let mut cursor = Cursor::build(conn)
+        with_items(100, |client| {
+            let mut cursor = Cursor::build(client)
                 .query("SELECT id FROM products WHERE id > $1 AND id < $2")
                 .query_params(&[&1, &10])
                 .finalize()
