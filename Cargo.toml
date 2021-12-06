@@ -11,10 +11,10 @@ description = "Cursor abstraction for PostgreSQL"
 readme = "README.md"
 
 [dependencies]
-rand = "0.3"
+rand = "0.8.4"
 
 [dependencies.postgres]
-version = "0.15.1"
+version = "0.19.2"
 
 [dev-dependencies]
-lazy_static = "0.2"
+lazy_static = "1.4.0"

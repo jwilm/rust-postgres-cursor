@@ -9,15 +9,15 @@ A cursor type for use with PostgreSQL.
 extern crate postgres;
 extern crate postgres_cursor;
 
-use postgres::{Connection, TlsMode};
+use postgres::{Client, NoTls};
 use postgres_cursor::Cursor;
 
 // First, establish a connection with postgres
-let conn = Connection::connect("postgres://jwilm@127.0.0.1/foo", TlsMode::None)
+let mut client = Client::connect("postgres://jwilm@127.0.0.1/foo", NoTls)
     .expect("connect");
 
 // Build the cursor
-let mut cursor = Cursor::build(&conn)
+let mut cursor = Cursor::build(&mut client)
     // Batch size determines rows returned in each FETCH call
     .batch_size(10)
     // Query is the statement to build a cursor for
@@ -28,7 +28,7 @@ let mut cursor = Cursor::build(&conn)
 
 // Iterate over batches of rows
 for result in &mut cursor {
-    // Each item returned from the iterator is a Result<Rows>.
+    // Each item returned from the iterator is a Result<Vec<Row>, postgres::Error>.
     // This is because each call to `next()` makes a query
     // to the database.
     let rows = result.unwrap();
@@ -40,11 +40,3 @@ for result in &mut cursor {
     }
 }
 ```
-
-## Features
-
-The library is mostly complete since its only intent is providing a cursor
-abstraction. However, there are some small planned features worth noting:
-
-- [ ] Support query parameters (eg. `"SELECT foo FROM bar WHERE quux = $1"`) in
-      cursor query string.
